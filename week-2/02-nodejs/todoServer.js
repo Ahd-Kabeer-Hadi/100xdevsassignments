@@ -41,9 +41,97 @@
  */
   const express = require('express');
   const bodyParser = require('body-parser');
-  
+  const fs = require("fs");
   const app = express();
   
   app.use(bodyParser.json());
-  
+
+  function findIndex(arr, id){
+    if(arr.length === 0) return 0;
+    let isExist = arr.find(elem => elem.id === id);
+    if(isExist == undefined) return -1;
+    return arr.indexOf(isExist);
+  }
+
+  function removeAtIndex(arr,index){
+    let newArray = [];
+    arr.filter(elem => {
+      if(elem.id !== index) newArray.push(elem);
+    })
+  };
+  app.get("/todos", (req,res)=>{
+    fs.readFile("todos.json","utf8", (err,data)=>{
+      if(err) throw err;
+      res.json(JSON.parse(data));
+    })
+  })
+
+  app.get("/todos:id", (req, res)=>{
+    fs.readFile("todos.json","utf8", (err,data)=>{
+      if(err) throw err;
+      const TODOS = JSON.parse(data);
+      const isTodoExist = findIndex(TODOS, parseInt(req.params.id))
+      if(isTodoExist === -1) return res.status(404).send()
+      res.json(TODOS[isTodoExist])
+      
+    })
+  })
+
+  app.post("/todos", (req,res)=>{
+    const newTodo = {
+      id : Math.floor(Math.random() * 1000000),
+      title: req.body.title,
+      description: req.body.description
+    }
+
+    fs.readFile("todos.json","utf8", (err,data)=>{
+      if(err) throw err;
+      const TODOS = JSON.parse(data);
+      TODOS.push(newTodo);
+      fs.writeFile("todos.json", JSON.stringify(TODOS), (err)=>{
+        if(err) throw err;
+        res.status(201).json(newTodo);
+      })
+    })
+  })
+
+  app.put("/todos/:id", (req,res)=>{
+    fs.readFile("todos.json","utf8", (err,data)=>{
+      if(err) throw err;
+      const TODOS = JSON.parse(data)
+      const isTodoExist = findIndex(TODOS, parseInt(req.params.id));
+      if(isTodoExist === -1) return res.status(404).send();
+      
+      const updatedTodo = {
+        id:TODOS[isTodoExist].id,
+        title: req.body.title,
+        description: req.body.description
+      }
+
+      fs.writeFile("todos.json", JSON.stringify(TODOS), (err)=>{
+        if(err) throw err;
+        res.status(200).json(updatedTodo);
+      })
+
+    })
+  })
+
+  app.delete("/todos/:id", (req,res)=>{
+    fs.readFile("todos.json","utf8", (err,data)=>{
+      if(err) throw err;
+      const TODOS = JSON.parse(data);
+      const isTodoExist = findIndex(TODOS, parseInt(req.params.id));
+      if(isTodoExist === -1) return res.status(404).send();
+      removeAtIndex(TODOS, isTodoExist);
+      fs.writeFile("todos.json", JSON.stringify(TODOS), (err)=>{
+        if(err) throw err;
+        res.status(200).send();
+      })
+    })
+  })
+
+  app.use((req,res,next)=>{
+    res.status(404).send();
+  });
+     
   module.exports = app;
